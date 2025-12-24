@@ -53,6 +53,14 @@ for crd in ${crds}; do
   
   api_version=$(get_crd_version "${crd}")
 
+  # Clean generated code output dirs before re-generating.
+  gen_dir="${SCRIPT_ROOT}/pkg/crd/${crd}/${api_version}/apis"
+  rm -rf \
+    "${gen_dir}/applyconfiguration" \
+    "${gen_dir}/clientset" \
+    "${gen_dir}/listers" \
+    "${gen_dir}/informers"
+
   echo "Generating deepcopy funcs for $crd ($api_version)"
   deepcopy-gen \
     --go-header-file hack/boilerplate.go.txt \
