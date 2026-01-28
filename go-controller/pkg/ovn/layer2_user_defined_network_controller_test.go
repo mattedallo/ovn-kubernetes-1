@@ -371,6 +371,11 @@ var _ = Describe("OVN Multi-Homed pod operations for layer 2 network", func() {
 					config.Gateway.DisableSNATMultipleGWs = testConfig.gatewayConfig.DisableSNATMultipleGWs
 				}
 				config.OVNKubernetesFeature.EnableMultiNetwork = true
+				if config.OVNKubernetesFeature.EnableInterconnect {
+					// In IC tests, the node is created in the local zone (testICZone). Ensure the controller
+					// considers that zone local so that per-node GW entities are cleaned up.
+					config.Default.Zone = testICZone
+				}
 			}
 			app.Action = func(*cli.Context) error {
 				netConf := netInfo.netconf()
@@ -395,7 +400,14 @@ var _ = Describe("OVN Multi-Homed pod operations for layer 2 network", func() {
 				gwConfig, err := util.ParseNodeL3GatewayAnnotation(testNode)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(gwConfig.NextHops).NotTo(BeEmpty())
-				nbZone := &nbdb.NBGlobal{Name: ovntypes.OvnDefaultZone, UUID: ovntypes.OvnDefaultZone}
+				// In IC mode, the controller's local zone is derived from NB_Global.name.
+				// Align it with the node's zone so the node is treated as local and per-node
+				// GW entities get cleaned up by the UDN controller.
+				zoneName := ovntypes.OvnDefaultZone
+				if config.OVNKubernetesFeature.EnableInterconnect {
+					zoneName = testICZone
+				}
+				nbZone := &nbdb.NBGlobal{Name: zoneName, UUID: zoneName}
 
 				n := newNamespace(ns)
 				if netInfo.isPrimary {
